@@ -74,11 +74,13 @@ public class ResponseStructure<T> {
 	/**
 	 * Free-form human-readable description string explaining the operation outcome.
 	 *
-	 * <p>Examples of values populated by
+	 * <p>Examples of values populated verbatim by
 	 * {@link com.jspider.spring_boot_simple_crud_with_mysql.controller.ProductController}:
-	 * {@code "Product Saved Successfully..."} on a successful save, or a derived message on
-	 * other operations. The string is intended for client-side display or logging and is not
-	 * machine-parsed by the framework.</p>
+	 * {@code "save product Secessfully..."} (with the source's intentional spelling, preserved
+	 * per Rule R-019) on a successful save, {@code "update product Secessfully..."} on a
+	 * successful update, or {@code "data not saved something went wrong"} on a failed save.
+	 * The string is intended for client-side display or logging and is not machine-parsed by
+	 * the framework.</p>
 	 *
 	 * @since 1.0.0
 	 */

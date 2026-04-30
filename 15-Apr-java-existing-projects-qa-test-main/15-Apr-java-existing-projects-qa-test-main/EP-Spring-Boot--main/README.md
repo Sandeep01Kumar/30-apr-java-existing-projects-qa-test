@@ -957,7 +957,7 @@ cd EP-Spring-Boot--main
 # Produces: target/spring-boot-simple-crud-with-mysql-0.0.1-SNAPSHOT.jar
 ```
 
-The Maven Wrapper (`./mvnw`) is the canonical invocation — never use a system-installed `mvn`. The wrapper guarantees the same Maven version (`3.3.2`) is used everywhere, regardless of what is installed on the operator's machine.
+The Maven Wrapper (`./mvnw`) is the canonical invocation — never use a system-installed `mvn`. The wrapper guarantees the same Maven Wrapper version (`3.3.2`), which pins Apache Maven `3.9.9` (per `.mvn/wrapper/maven-wrapper.properties`) for download, is used everywhere, regardless of what is installed on the operator's machine.
 
 The produced JAR is a Spring-Boot-repackaged executable: it contains the application's compiled classes, all Maven runtime dependencies (Tomcat, Hibernate, HikariCP, Springdoc, MySQL driver, H2 driver), and a Spring Boot launcher (`org.springframework.boot.loader.launch.JarLauncher`) as the JAR entry point.
 
@@ -1147,7 +1147,7 @@ The `bin/` directory at the project root is created by the Eclipse IDE during in
 
 ## 11. Contributing / Local Development
 
-- **Always use the Maven Wrapper.** Use `./mvnw` (or `mvnw.cmd` on Windows) for every build/test/run invocation. **Never** run a system-installed `mvn` binary — the wrapper guarantees a reproducible Maven version (`3.3.2`) across all developer machines.
+- **Always use the Maven Wrapper.** Use `./mvnw` (or `mvnw.cmd` on Windows) for every build/test/run invocation. **Never** run a system-installed `mvn` binary — the wrapper guarantees a reproducible Maven Wrapper version (`3.3.2`), which pins Apache Maven `3.9.9` (per `.mvn/wrapper/maven-wrapper.properties`) for download, across all developer machines.
 
 - **Run the smoke test before opening a pull request.** The single existing test validates Spring context bootability:
 
