@@ -33,11 +33,23 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code GET /student/getTodayDate} and {@code POST /student/addition/{a1}/{b1}}.
  *
  * <p><b>Note:</b> This class is <b>deliberately not annotated with
- * {@link org.springframework.web.bind.annotation.CrossOrigin @CrossOrigin}</b> &mdash; it
- * does <b>not</b> participate in the permissive CORS policy applied to
- * {@link com.jspider.spring_boot_simple_crud_with_mysql.controller.ProductController}.
- * Browser requests originating from foreign origins will therefore be subject to the
- * default same-origin policy enforced by the user-agent. The class is also
+ * {@link org.springframework.web.bind.annotation.CrossOrigin @CrossOrigin}</b> &mdash; no
+ * Spring CORS interceptor is registered for {@code /student/**} mappings. As a
+ * consequence, requests originating from foreign origins are <b>not</b> rejected at
+ * the server tier (the server returns the normal {@code 200} response), and no
+ * {@code Access-Control-Allow-Origin} response header is emitted. Browser clients
+ * will therefore still apply the user-agent's default same-origin policy and block
+ * the response client-side; non-browser clients (such as {@code curl} or other
+ * back-end services) can call these endpoints from any origin without restriction.
+ * Contrast this behavior with
+ * {@link com.jspider.spring_boot_simple_crud_with_mysql.controller.ProductController},
+ * whose {@code @CrossOrigin(value = "")} annotation produces an empty allow-list and
+ * causes Spring's CORS interceptor to actively reject every cross-origin request to
+ * {@code /product/**} with HTTP 403 (see that class's Javadoc for details). The
+ * runtime CORS posture of the two controllers is therefore opposite at the server
+ * tier: {@code /product/**} is restrictive (403 on cross-origin), {@code /student/**}
+ * is open at the server tier but unannounced to browsers (200 with no CORS headers).
+ * The class is also
  * <b>deliberately not annotated with the Springdoc OpenAPI
  * {@code io.swagger.v3.oas.annotations.tags.Tag} annotation</b> &mdash; its endpoints
  * appear under the default OpenAPI grouping (rather than a named tag) in the generated

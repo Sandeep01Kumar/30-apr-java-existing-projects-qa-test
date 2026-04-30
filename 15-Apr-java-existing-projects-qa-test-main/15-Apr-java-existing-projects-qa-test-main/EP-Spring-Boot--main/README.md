@@ -1119,9 +1119,74 @@ The repository contains no `Dockerfile`, no `docker-compose.yml`, no Helm chart,
 
 ### 🪪 No security layer
 
-There is no Spring Security dependency, no authentication filter, no authorization annotation, no TLS configuration, and no rate-limiter. The `@CrossOrigin(value = "")` on `ProductController` is a permissive CORS declaration. Operators deploying this application to any non-trivial environment must add a security layer themselves.
+There is no Spring Security dependency, no authentication filter, no authorization annotation, no TLS configuration, and no rate-limiter. Operators deploying this application to any non-trivial environment must add a security layer themselves.
 
 *Source: Repository inspection — no `spring-boot-starter-security` dependency in `pom.xml`*
+
+### 🌐 CORS behavior — `@CrossOrigin(value = "")` on `ProductController` is **restrictive** at runtime, not permissive
+
+[ProductController.java](src/main/java/com/jspider/spring_boot_simple_crud_with_mysql/controller/ProductController.java) is annotated with `@CrossOrigin(value = "")`. Despite the visual look of "no constraints expressed", the **runtime effect is restrictive**: Spring's `CorsConfiguration` interprets the empty-string `value` as a CORS configuration that **defines no allowed origins**, so the Spring CORS interceptor activates on the controller's mappings and **rejects every cross-origin browser request with HTTP 403**. Verified at runtime against this build:
+
+| Endpoint | Cross-origin request | Server response |
+|----------|----------------------|-----------------|
+| `GET /product/getTodayDate` (with `Origin: http://example.com`) | rejected by Spring CORS interceptor | **HTTP 403** |
+| `GET /product/getTodayDate` (with any other foreign `Origin`, including `null` and `https://google.com`) | rejected | **HTTP 403** |
+| `OPTIONS /product/saveProduct` preflight (cross-origin) | rejected | **HTTP 403** |
+| `GET /student/getTodayDate` (with `Origin: http://example.com`) | not handled by any CORS interceptor (no `@CrossOrigin` on [StudentController](src/main/java/com/jspider/spring_boot_simple_crud_with_mysql/controller/StudentController.java)) | **HTTP 200** at the server tier; browsers will still apply the same-origin policy client-side because no `Access-Control-Allow-Origin` header is emitted |
+
+This is the **inverse** of what older revisions of this README claimed (those revisions described the annotation as "permissive"). It is also the inverse of the implied semantics one might infer from the bare annotation name. Earlier README and Javadoc wording has been corrected to match the runtime evidence above.
+
+The practical implication for operators is:
+
+- **Browser clients hosted on any origin other than `http://localhost:8090` will receive HTTP 403 from `/product/**` endpoints.** A frontend at `http://localhost:3000`, `http://127.0.0.1:5500`, or any deployed origin will be blocked.
+- To open `/product/**` to a real frontend, change the annotation to enumerate the allowed origin(s) explicitly — e.g., `@CrossOrigin(origins = "http://localhost:3000")` or `@CrossOrigin(origins = "*")` for fully open access. Modifying the source annotation is **out of scope** for this documentation effort per Rule R-003 / AAP §0.8.2.4; this section documents the current runtime behavior as it stands.
+- `/student/**` endpoints are reachable from any origin at the server tier (no CORS interceptor), but they do **not** emit the `Access-Control-Allow-Origin` response header, so browsers will still block the response client-side. They are effectively reachable only from same-origin contexts (or from non-browser clients that ignore CORS, such as `curl` or other backend services).
+
+*Source: Runtime verification at QA Checkpoint 5 (Phase 3 security boundary tests). Earlier versions of this README and the controller Javadoc described the annotation as "permissive"; that wording has been corrected to align with observed HTTP 403 responses.*
+
+### 🛡️ Outdated dependencies — known CVEs in BOM-resolved transitive versions
+
+The current `pom.xml` declares `spring-boot-starter-parent:3.4.4`, which transitively resolves to several runtime libraries that have **publicly disclosed CVEs with available fixes in newer releases**. Per Rule R-003 / AAP §0.8.2.3, version upgrades to `pom.xml` are **out of scope** for this documentation effort, but operators MUST be aware of the following exposures before deploying this application to any non-trivial environment.
+
+| CVE / Advisory | Affected component (current resolved version) | Severity | Fix version | Note |
+|----------------|----------------------------------------------|----------|-------------|------|
+| **CVE-2025-31650** ("Tomcat Killer") | `tomcat-embed-core` 10.1.39 | HIGH | Tomcat 10.1.40+ (Spring Boot 3.4.5+) | HTTP/2 denial-of-service via malformed HTTP/2 priority frames; default servlet container in this build |
+| **CVE-2025-31651** | `tomcat-embed-core` 10.1.39 | HIGH | Tomcat 10.1.40+ (Spring Boot 3.4.5+) | RewriteRule security-constraint bypass; same upgrade path resolves both Tomcat findings |
+| **CVE-2025-30706** | `mysql-connector-j` 9.1.0 | HIGH (CVSS 7.5) | mysql-connector-j 9.3.0+ (latest 9.5.0) | Take-over of MySQL Connectors; Oracle Critical Patch Update (April 2025); affects 9.0.0–9.2.0. Present in the production fat-JAR even though the default profile uses H2 — exposure depends on operator deployment choice |
+| **Spring Framework reflected-file-download** | `spring-*` 6.2.5 (12 BOM-managed artifacts) | MEDIUM-HIGH | Spring Framework 6.2.8+ | Reflected file download via `Content-Disposition` manipulation |
+| **Spring Framework path traversal** | `spring-*` 6.2.5 | MEDIUM-HIGH | Spring Framework 6.2.10+ | Path traversal under specific configuration |
+
+Recommended (out-of-scope) remediation, single change with broadest fix:
+
+```xml
+<!-- Bumping the parent inherits Tomcat 10.1.40+ and Spring Framework 6.2.6+ via the BOM -->
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.4.5</version>
+    <relativePath />
+</parent>
+```
+
+For full Spring Framework 6.2.8 / 6.2.10 coverage, use a Spring Boot 3.5.x line. For `mysql-connector-j`, an explicit `<dependency>` override is required because Spring Boot 3.4.5's BOM may still resolve to 9.1.0:
+
+```xml
+<dependency>
+    <groupId>com.mysql</groupId>
+    <artifactId>mysql-connector-j</artifactId>
+    <version>9.3.0</version> <!-- or latest non-vulnerable, e.g., 9.5.0 -->
+    <scope>runtime</scope>
+</dependency>
+```
+
+CVEs that were investigated and determined **NOT applicable** to this build are documented in the Checkpoint 5 evidence file `cp5-evidence/cve-summary.md` (out-of-tree, generated by QA). Notable not-applicable CVEs include:
+
+- **CVE-2025-22235** (Spring Boot actuator information disclosure) — `spring-boot-actuator` is **not on the classpath** (no `spring-boot-starter-actuator` dependency declared).
+- **CVE-2025-32966** (H2 Console INIT/RUNSCRIPT bypass) — H2 Console is **disabled** by default; `spring.h2.console.enabled` is not set in `application.properties`.
+- **CVE-2026-40972** (DevTools timing attack) — `spring-boot-devtools` is correctly excluded from the production fat-JAR by `spring-boot-maven-plugin`'s default behavior; verified via `unzip -l` showing zero `devtools` entries.
+- **CVE-2021-44228** (Log4Shell) — `log4j-core` is **not on the classpath**; only `log4j-api` and `log4j-to-slf4j` are present, and Log4Shell required `log4j-core`.
+
+*Source: QA Checkpoint 5 evidence (`cp5-evidence/cve-summary.md`); resolved versions verified via `./mvnw dependency:tree` and `unzip -l target/spring-boot-simple-crud-with-mysql-0.0.1-SNAPSHOT.jar`.*
 
 ### 🗒️ Outer-wrapper stub files
 

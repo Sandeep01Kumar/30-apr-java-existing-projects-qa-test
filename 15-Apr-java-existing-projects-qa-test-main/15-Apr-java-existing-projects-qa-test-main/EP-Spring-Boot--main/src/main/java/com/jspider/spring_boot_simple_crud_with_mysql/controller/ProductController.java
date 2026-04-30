@@ -43,9 +43,25 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  * handler method serializes its return value directly to the HTTP response body using
  * the configured Jackson message converter (JSON by default).</p>
  *
- * <p>The annotation {@code @CrossOrigin(value = "")} declares a permissive CORS
- * policy for cross-origin browser callers (feature F-015 / technical specification
- * Section 5.2.2). The annotation
+ * <p>The annotation {@code @CrossOrigin(value = "")} (feature F-015 / technical
+ * specification Section 5.2.2) is present on this controller and, despite its
+ * apparently lenient form, has a <b>restrictive</b> runtime effect. Spring's
+ * {@code CorsConfiguration} treats the empty-string {@code value} attribute as
+ * "CORS handling is active and no origins are allowed", so the Spring CORS
+ * interceptor activates on this controller's mappings and rejects every
+ * cross-origin browser request with <b>HTTP 403 Forbidden</b> (verified at runtime
+ * during QA Checkpoint 5: any foreign {@code Origin} header on a {@code /product/**}
+ * endpoint produces a 403 response). This is the inverse of how the annotation may
+ * intuitively read &mdash; the empty {@code value} is interpreted by Spring as an
+ * empty allow-list, not as an open allow-list. Earlier revisions of this Javadoc
+ * described the annotation as "permissive"; that wording was incorrect and has
+ * been corrected here to align with the observed runtime behavior. To open this
+ * controller to a real browser frontend, change the annotation to enumerate the
+ * allowed origin(s) explicitly &mdash; e.g., {@code @CrossOrigin(origins = "*")}
+ * for fully open access or
+ * {@code @CrossOrigin(origins = "http://localhost:3000")} for a specific origin
+ * &mdash; though such a source change is out of scope for the current
+ * documentation-only effort. The annotation
  * {@code @Tag(name = "productcontroller", description = "this is controller class")}
  * declares the Springdoc / OpenAPI grouping under which these endpoints appear in
  * the auto-generated Swagger UI; the tag values are quoted verbatim from the source
