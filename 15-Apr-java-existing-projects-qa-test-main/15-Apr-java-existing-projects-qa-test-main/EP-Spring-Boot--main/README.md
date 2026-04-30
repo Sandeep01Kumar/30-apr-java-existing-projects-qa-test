@@ -918,7 +918,7 @@ The envelope JSON shape is:
 | `apiDescription` | `String` | Free-form human-readable description |
 | `data` | `T` (generic) | Generic-typed payload — `Product` for the two product endpoints |
 
-The class is annotated `@Schema(hidden = true)`, so it does **not** appear in the OpenAPI schema list at `/v3/api-docs`. The envelope is implemented by [ResponseStructure.java](src/main/java/com/jspider/spring_boot_simple_crud_with_mysql/responses/ResponseStructure.java).
+The class is annotated `@Schema(hidden = true)`, suppressing the bare `ResponseStructure` class from the OpenAPI schema list at `/v3/api-docs`. Note, however, that Springdoc 2.8.6 still synthesizes a schema for the **parameterized generic** (e.g., `ResponseStructureProduct Class`) whenever `ResponseStructure<T>` is declared as a controller return type — this is a known Springdoc behavior with parameterized generics, not something the `hidden = true` flag can suppress. Inspect the live OpenAPI document at `/v3/api-docs` (under `components.schemas`) to confirm the exact schema names produced for your build. The envelope is implemented by [ResponseStructure.java](src/main/java/com/jspider/spring_boot_simple_crud_with_mysql/responses/ResponseStructure.java).
 
 ### 📑 Swagger UI / OpenAPI Cross-Reference
 
