@@ -357,6 +357,9 @@ EP-Spring-Boot--main/
 ├── pom.xml                                           # Maven build descriptor
 ├── mvnw                                              # Maven Wrapper (POSIX)
 ├── mvnw.cmd                                          # Maven Wrapper (Windows)
+├── .mvn/
+│   └── wrapper/
+│       └── maven-wrapper.properties                  # Maven Wrapper distributionUrl pin (required by mvnw)
 ├── bin/                                              # Eclipse build mirror (generated; out of scope)
 └── src/
     ├── main/
@@ -383,6 +386,7 @@ EP-Spring-Boot--main/
 Notes:
 
 - All paths use forward slashes for cross-platform portability.
+- The `.mvn/wrapper/maven-wrapper.properties` file pins the Apache Maven distribution URL consumed by the `mvnw` / `mvnw.cmd` scripts. **This file is required for the Maven Wrapper to function** — without it, `./mvnw` cannot resolve the Maven distribution to download. Its single content line is `distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.9/apache-maven-3.9.9-bin.zip`. If the file is ever lost, regenerate it with `mvn -N wrapper:wrapper -Dmaven=3.9.9` from any system Maven installation, or copy it from a reference checkout.
 - The `bin/` folder is a generated Eclipse build mirror; it contains compiled `*.class` files plus copies of source. It is **generated**, not authored, and is out of scope for documentation purposes.
 - There is **no** `static/` or `templates/` directory; the project is API-only and serves no HTML/Thymeleaf views.
 - There is **no** `HELP.md` file (the Spring Initializr default has been removed).
@@ -1031,8 +1035,10 @@ If `pom.xml` declares the `org.apache.maven.plugins:maven-javadoc-plugin:3.11.2`
 
 ```bash
 ./mvnw javadoc:javadoc
-# Output: target/site/apidocs/index.html
+# Output: target/reports/apidocs/index.html
 ```
+
+> **Note on output location**: Maven Javadoc Plugin **3.10.0** and later (which includes `3.11.2` declared in this project's `pom.xml`) emits the rendered HTML under `${project.build.directory}/reports/apidocs/` (i.e., `target/reports/apidocs/`) rather than the historical `target/site/apidocs/` location used by plugin versions ≤ 3.8.0. This change was introduced by issue [MJAVADOC-813](https://issues.apache.org/jira/browse/MJAVADOC-813). To restore the legacy `target/site/apidocs/` path, declare `<reportOutputDirectory>${project.build.directory}/site</reportOutputDirectory>` inside the plugin's `<configuration>` block in `pom.xml`.
 
 To produce a Javadoc JAR alongside the application JAR (useful for publishing to a Maven repository):
 
@@ -1054,10 +1060,10 @@ For an aggregate Javadoc tree (degenerate to a single module here):
 
 ```bash
 ./mvnw javadoc:aggregate
-# Aggregate output: target/site/apidocs/
+# Aggregate output: target/reports/apidocs/
 ```
 
-Open `target/site/apidocs/index.html` in any browser.
+Open `target/reports/apidocs/index.html` in any browser.
 
 *Source: Documentation Tooling Dependencies; Maven Javadoc Plugin coordinates on Maven Central*
 
